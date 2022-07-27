@@ -9,18 +9,6 @@ SCORE_LIMIT = 106
 SIZES = np.array([SLOT_LIMIT] * 12 + [STAGE_LIMIT, SCORE_LIMIT] + [DICE_LIMIT] * 5, dtype=np.int64)
 
 
-def all_poss(k):
-    if k == 1:
-        return [[i] for i in range(6)]
-    else:
-        temp = all_poss(k-1)
-        res = []
-        for i in range(6):
-            for t in temp:
-                res.append([i] + t)
-        return res
-
-
 def generate_index(k):
     if k == 1:
         return [[False], [True]]
@@ -33,16 +21,8 @@ def generate_index(k):
     return res_list
 
 
-ALL_POSS_1 = np.array(all_poss(1))
-ALL_POSS_2 = np.array(all_poss(2))
-ALL_POSS_3 = np.array(all_poss(3))
-ALL_POSS_4 = np.array(all_poss(4))
-ALL_POSS_5 = np.array(all_poss(5))
-ACTION_INDEXES = np.array(generate_index(5), dtype=bool)
-
-
 def number_decode_full(num):
-    res = np.zeros(5, dtype=np.int32)
+    res = np.zeros(5, dtype=np.int64)
     for i in range(4, -1, -1):
         res[i] = num % 6
         num //= 6
@@ -55,6 +35,23 @@ def number_encode_full(vec):
     for i in range(len(vec)):
         res = res * 6 + vec[i]
     return res
+
+
+def number_encoding_count(k):
+    table = {}
+    for i in range(6**k):
+        encoded_num = number_encode_full(np.sort(number_decode_full(i)))
+        if encoded_num not in table:
+            table[encoded_num] = 0
+        table[encoded_num] += 1
+
+    output = np.zeros((len(table), 6))
+    counter = 0
+    for key in table.keys():
+        output[counter, 1:] = number_decode_full(key)
+        output[counter, 0] = table[key]
+        counter += 1
+    return output
 
 
 def number_encoding():
@@ -116,6 +113,11 @@ def decode_small(num):
     return res
 
 
+ALL_POSS = np.vstack([number_encoding_count(k+1) for k in range(5)])
+POSS_POSITION = np.cumsum([0] + [len(number_encoding_count(k+1)) for k in range(5)])
+ACTION_INDEXES = np.array(generate_index(5), dtype=bool)
+TOTAL_FOLD = 8
+
 if __name__ == '__main__':
     state = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 105, 5, 5, 5, 5, 5])
     num = encode(state)
@@ -127,3 +129,7 @@ if __name__ == '__main__':
     print(encode_small(state))
 
     print(decode(32815918))
+
+    print(ALL_POSS)
+    print(len(ALL_POSS))
+    print(POSS_POSITION)
